@@ -25,13 +25,13 @@
 #define NAME_LENGTH 256
 #define BLOCKSIZE 4096    // 4kb
 #define BLOCKNR  1048576 //1<<20 =  total/blocksize = 4g/4k
+#define  CONTENT_SIZE  (4096 -  sizeof(block_no_t)) 
+
 
 typedef int block_no_t;
-
-static void *mem[BLOCKNR];
-static struct filenode *ROOT = NULL;
-static int USED_BLOCK = 0,LAST_BLOCK=0;
-static int CONTENT_SIZE = BLOCKSIZE - sizeof(block_no_t);
+static void *mem[BLOCKNR+1];
+static struct filenode *ROOT ;
+static block_no_t *USED_BLOCK , *LAST_BLOCK;
 
 /* filenode : metadata of each entry( dir or file) stored in mem blocks 
  * filenode.content: is the value of the first mem block_no of the files's content( for dir, it's -1)
@@ -39,19 +39,19 @@ static int CONTENT_SIZE = BLOCKSIZE - sizeof(block_no_t);
  */
 struct filenode {
     block_no_t block_no ;
-    int  content;
+    block_no_t  content;
     struct stat st;
     struct filenode *next;
     char name[NAME_LENGTH];
 };
 
 
-int map_mem(int i){
+static block_no_t map_mem(block_no_t i){
   /* get a vacant block and mmap, and init header info*/
     for(i=i%BLOCKNR;i<BLOCKNR;++i){
         if(!mem[i]){
-            LAST_BLOCK = i;
-            USED_BLOCK +=1;
+            *LAST_BLOCK = i;
+            *USED_BLOCK +=1;
             mem[i] = mmap(NULL, BLOCKSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
             *(block_no_t*) mem[i] = -1;
             return i;
@@ -59,9 +59,9 @@ int map_mem(int i){
     }
     return -1;
 }
-void unmap_mem(  int i){ 
+void unmap_mem(block_no_t  i){ 
     munmap(mem[i],BLOCKSIZE);
-    USED_BLOCK -=1;
+    *USED_BLOCK -=1;
     mem[i] = NULL;
 }
 
@@ -74,12 +74,10 @@ void unmap_chain_block(block_no_t no){
     }
 }
 
-
 void * get_next_block(block_no_t* block_no){
     *block_no = *(block_no_t*) mem[*block_no];
     return mem[*block_no]+sizeof(block_no_t);
 }
-
 
 void * seek_mem(block_no_t* block_no,off_t *offset){
     /*  find the begin block to read according to offset */
@@ -93,7 +91,7 @@ void * seek_mem(block_no_t* block_no,off_t *offset){
      * IN func zfs_write, it ensure the block_no won't be the filenode->content 
      **/
     if(*block_no ==-1){
-        *block_no = map_mem(LAST_BLOCK);
+        *block_no = map_mem(*LAST_BLOCK);
         if(*block_no==-1) return NULL;
         *(block_no_t*) mem[former_block] = *block_no;
     }
@@ -119,7 +117,7 @@ static struct filenode *get_filenode(const char *name,struct filenode **prt){
 }
 
 static struct filenode* create_filenode(const char *name, const struct stat *st){
-    int i = map_mem(LAST_BLOCK);
+    block_no_t i = map_mem(*LAST_BLOCK);
     if(i==-1) return NULL;
     ++name; // skip the leading "/"
     int namelen = sizeof(name);
@@ -134,7 +132,19 @@ static struct filenode* create_filenode(const char *name, const struct stat *st)
     return ROOT;
 }
 
-
+static void *zfs_init(struct fuse_conn_info *conn){       
+	/* set all block  free*/
+    memset(mem,0,sizeof(void *) * BLOCKNR);	
+	ROOT=NULL;
+	/* set no.(bLOCKNR+1) block as the super block
+	 * storing info such as used_block(num), last_block(allocated)
+	 * */
+	void * p_mem = mem[map_mem(BLOCKNR)];
+	USED_BLOCK = (block_no_t*)((char*)p_mem+sizeof(block_no_t));
+	LAST_BLOCK =(block_no_t*)((char*)p_mem+sizeof(block_no_t)*2);
+	*USED_BLOCK = *LAST_BLOCK=0;
+}
+ 
 
 static int zfs_mknod(const char *path, mode_t mode, dev_t dev){  
     /* when createing a file, if create not impl, call mknod  @fuse.h L368 ,106
@@ -189,19 +199,19 @@ static int zfs_read(const char *path, char *buffer, size_t size, off_t offset, s
     struct filenode *node = get_filenode(path,NULL);
     node->st.st_atime = time(NULL);
     if(offset>node->st.st_size) return 0; 
-    int ret = size;
+    size_t ret = size;
     if(offset + size> node->st.st_size)
         ret = node->st.st_size - offset;
     block_no_t tmp= node->content, *block_no= &tmp;
     void * p_mem = seek_mem(block_no,&offset);  // new offset is within cur block 
-    int cur_block_left = CONTENT_SIZE - offset;
+    size_t cur_block_left = CONTENT_SIZE - offset;
     if(cur_block_left > ret){
         memcpy(buf,(char *)p_mem, ret);
         return ret;
     }
     memcpy(buf, (char*)p_mem, cur_block_left);
     buf+=cur_block_left;
-    int left = ret- cur_block_left;
+    size_t left = ret- cur_block_left;
     while(left>CONTENT_SIZE){
         memcpy(buf,(char*)get_next_block(block_no),CONTENT_SIZE);
         buf+=CONTENT_SIZE;
@@ -220,30 +230,30 @@ static int zfs_write(const char *path, const char *buffer, size_t size, off_t of
     node->st.st_mtime = time(NULL);
     node->st.st_atime = time(NULL);
     if(node->content==-1) { // first write 
-        node->content = map_mem(LAST_BLOCK);
+        node->content = map_mem(*LAST_BLOCK);
         if(node->content==-1)return -ENOSPC;
     }
     block_no_t tmp  = node->content, *block_no = &tmp;
     void * p_mem  = seek_mem(block_no,&offset);
     /* after calling seek_mem, now offset is within one block */
-    int num = (offset+size)/CONTENT_SIZE;  //think twice
+    block_no_t num = (offset+size)/CONTENT_SIZE;  //think twice
     node->st.st_blocks += num;
-    if(num > (BLOCKNR - USED_BLOCK)) return -ENOSPC;
-    int cur_block_left = CONTENT_SIZE - offset;
+    if(num > (BLOCKNR - *USED_BLOCK)) return -ENOSPC;
+    size_t cur_block_left = CONTENT_SIZE - offset;
     if(size<cur_block_left){
         memcpy(p_mem, buf, size);
         return size;
     }
     memcpy(p_mem, buf, cur_block_left);
     buf+= cur_block_left;
-    int left = size-cur_block_left ;
+    size_t left = size-cur_block_left ;
     while(left>CONTENT_SIZE){
-        *(block_no_t*) mem[*block_no]  = map_mem(LAST_BLOCK);// new block 
+        *(block_no_t*) mem[*block_no]  = map_mem(*LAST_BLOCK);// new block 
         memcpy((char*)get_next_block(block_no),buf,CONTENT_SIZE);
         buf+=CONTENT_SIZE;
         left-=CONTENT_SIZE;
     }
-    *(block_no_t*) mem[*block_no]  = map_mem(LAST_BLOCK);
+    *(block_no_t*) mem[*block_no]  = map_mem(*LAST_BLOCK);
     memcpy((char*)get_next_block(block_no),buf,left);
     return size;
 }
@@ -293,10 +303,7 @@ static int zfs_rmdir(const char * path){
     return zfs_unlink(path);    
 }
 
-static void *zfs_init(struct fuse_conn_info *conn){       
-    memset(mem,0,sizeof(void *) * BLOCKNR);
-}
- 
+
 static const struct fuse_operations op = {
     .init = zfs_init,
     .getattr = zfs_getattr,
