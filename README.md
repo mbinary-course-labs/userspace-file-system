@@ -23,5 +23,5 @@ including :
 ## Vision
 ![](fs.png)
 
-## LICENCE
+## Licence
 [MIT](LICENCE)
