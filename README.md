@@ -7,6 +7,14 @@
 * write file
 
 ## Design
+### metadata of fs
+* TOTAL SIZE: 4G
+* BLOCKSIZE: 4KB
+* BLOCKNR  : 4G/4KB
+* NAME_LENGTH: 256
+* block_no_t: int  (the type of block_no)
+* Each block has a block_no at the begining 
+
 ### filenode 
 metadata of each entry( dir or file) stored in mem blocks 
 including : 
