@@ -6,7 +6,27 @@
 # Blog: https://mbinary.github.io
 # Github: https://github.com/mbinary
 # Created Time: 2018-05-10  23:09
-# Description: 
+## Description:
+#		Simple userspace filesystem using fuse interface
+#       Currently, I implemented operation on files such as:
+#		read, write,   view attributes
+#########################################################################
+*/
+
+#define FUSE_USE_VERSION 26
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <errno.h>
+#include <time.h>
+#include <fuse.h>
+#include <sys/mman.h>
+
+#define NAME_LENGTH 255
+#define  Description:
+#		Simple userspace filesystem using fuse interface
+#       Currently, I implemented operation on files such as:
+#		read, write,   view attributes
 #########################################################################
 */
 
@@ -324,7 +344,7 @@ static const struct fuse_operations op = {
     .read = zfs_read,
     .unlink = zfs_unlink,
 	.mkdir = zfs_mkdir,
-	.rmdir = zfs_rmdir,
+	.rmdir = zfs_rmdir,ZZ
 };
 
 int main(int argc, char *argv[]){
