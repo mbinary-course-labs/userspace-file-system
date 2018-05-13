@@ -2,10 +2,10 @@
 > An implementation of userspace filesystem using fuse interfaces
 
 ## Function
-* view attr of files and the root directory
-* read file
-* write file
-
+- [x] view attr of files and the root directory
+- [x] read file
+- [x] write file
+- [ ] directories operation ( to do )
 ## Design
 ### metadata of fs
 * TOTAL SIZE: 4G
@@ -26,7 +26,7 @@ including :
 * int block_no  : num of mem block
 * int content   : is the value of the first mem block_no of the files's content( for dir, it's -1)
 * stat st       : st of each entry
-* filenode* next: next node
+* filenode\* next: next node
 * char name[256]: entry name 
 
 ### Free space allocation algorithm 
@@ -34,7 +34,26 @@ including :
 
  
 ## Vision
-![](fs.png)
+![](src/fs.png)
 
+
+## Resource
+- [binary file](src/oshfs)
+- [test file](src/test.sh)
+```shell
+gcc -D_FILE_OFFSET_BITS=64 -o oshfs oshfs.c -lfuse 
+cd mountpoint
+ls -al
+echo helloworld > testfile
+ls -l testfile # 查看是否成功创建文件
+cat testfile # 测试写入和读取是否相同
+dd if=/dev/zero of=testfile bs=1M count=2000
+ls -l testfile # 测试2000MiB大文件写入
+dd if=/dev/urandom of=testfile bs=1M count=1 seek=10
+ls -l testfile # 此时应为11MiB
+dd if=testfile of=/dev/null # 测试文件读取
+rm testfile
+ls -al # testfile是否成功删除
+```
 ## Licence
 [MIT](LICENCE)
