@@ -14,7 +14,12 @@
 * NAME_LENGTH: 256
 * block_no_t: int  (the type of block_no)
 * Each block has a block_no at the begining 
+### super block
+block 0( aka mem[0]) is the super block.
 
+It stores the num of used_blocks and the num of the latest used block.
+
+The latedt used block is exactly the head block of the node-chain, so we can use this to visit all entry nodes.
 ### filenode 
 metadata of each entry( dir or file) stored in mem blocks 
 including : 

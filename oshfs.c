@@ -29,7 +29,7 @@
 
 
 typedef int block_no_t;
-static void *mem[BLOCKNR+1];
+static void *mem[BLOCKNR];
 static struct filenode *ROOT ;
 static block_no_t *USED_BLOCK , *LAST_BLOCK;
 
@@ -101,7 +101,7 @@ void * seek_mem(block_no_t* block_no,off_t *offset){
 static struct filenode *get_filenode(const char *name,struct filenode **prt){ 
     if(!ROOT)return NULL;
     if(strcmp(ROOT->name,name+1)==0){      // name+1 :  skip the leading "/"
-        if(prt!=NULL)*prt= NULL;
+        if(prt)*prt= NULL;
         return ROOT;
     }
     struct filenode *node = ROOT;
@@ -109,7 +109,7 @@ static struct filenode *get_filenode(const char *name,struct filenode **prt){
         if(strcmp(node->next->name, name + 1) != 0)
             node = node->next;
         else{
-            if(prt!=NULL) *prt = node;
+            if(prt) *prt = node;
             return node->next;
         }
     }
@@ -134,15 +134,17 @@ static struct filenode* create_filenode(const char *name, const struct stat *st)
 
 static void *zfs_init(struct fuse_conn_info *conn){       
 	/* set all block  free*/
-    memset(mem,0,sizeof(void *) * BLOCKNR);	
+    memset(mem,0,sizeof(void *) * BLOCKNR);
 	ROOT=NULL;
-	/* set no.(bLOCKNR+1) block as the super block
+	/* set block 0 as the super block
 	 * storing info such as used_block(num), last_block(allocated)
 	 * */
-	void * p_mem = mem[map_mem(BLOCKNR)];
-	USED_BLOCK = (block_no_t*)((char*)p_mem+sizeof(block_no_t));
-	LAST_BLOCK =(block_no_t*)((char*)p_mem+sizeof(block_no_t)*2);
-	*USED_BLOCK = *LAST_BLOCK=0;
+	mem[0]= mmap(NULL, BLOCKSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+	LAST_BLOCK =(block_no_t*)((char*)mem[0]);
+	USED_BLOCK = (block_no_t*)((char*)mem[0]+sizeof(block_no_t));
+	*USED_BLOCK =1;
+	*LAST_BLOCK=0;
+	return NULL; 
 }
  
 
