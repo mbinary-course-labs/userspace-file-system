@@ -2,10 +2,11 @@
 > An implementation of userspace filesystem using fuse interfaces
 
 ## Function
-- [x] view attr of files and the root directory
 - [x] read file
 - [x] write file
-- [x] change metadata of file
+- [x] truncate file
+- [x] ls: view attrs 
+- [x] chown, chmod, mv: change attrs
 - [ ] directory operations ( to do )
 ## Design
 ### metadata of fs

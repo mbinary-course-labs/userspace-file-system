@@ -132,22 +132,22 @@ static struct filenode* create_filenode(const char *name, const struct stat *st)
 }
 
 static void *zfs_init(struct fuse_conn_info *conn){       
-	/* set all block  free*/
+    /* set all block  free*/
     memset(mem,0,sizeof(void *) * BLOCKNR);
-	ROOT=NULL;
-	/* set block 0 as the super block
-	 * storing info such as used_block(num), last_block(allocated)
-	 * */
-	mem[0]= mmap(NULL, BLOCKSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-	LAST_BLOCK =(block_no_t*)((char*)mem[0]);
-	USED_BLOCK = (block_no_t*)((char*)mem[0]+sizeof(block_no_t));
-	*USED_BLOCK =1;
-	*LAST_BLOCK=0;
-	return NULL; 
+    ROOT=NULL;
+    /* set block 0 as the super block
+     * storing info such as used_block(num), last_block(allocated)
+     * */
+    mem[0]= mmap(NULL, BLOCKSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+    LAST_BLOCK =(block_no_t*)((char*)mem[0]);
+    USED_BLOCK = (block_no_t*)((char*)mem[0]+sizeof(block_no_t));
+    *USED_BLOCK =1;
+    *LAST_BLOCK=0;
+    return NULL; 
 }
  
 static int zfs_open(const char *path, struct fuse_file_info *fi){
-	if(get_filenode(path,NULL)==NULL) return -ENOENT;
+    if(get_filenode(path,NULL)==NULL) return -ENOENT;
     return 0;
 }
 
@@ -173,41 +173,41 @@ static int zfs_mknod(const char *path, mode_t mode, dev_t dev){
 }
 
 static int zfs_chmod(const char *path,mode_t mode){
-	struct filenode * node = get_filenode(path,NULL);
-	if(!node) return -ENOENT;
-	node->st.st_mode = mode;
-	return 0;
+    struct filenode * node = get_filenode(path,NULL);
+    if(!node) return -ENOENT;
+    node->st.st_mode = mode;
+    return 0;
 }
 
 static int zfs_chown(const char * path, uid_t uid,gid_t gid){
-	struct filenode* node = get_filenode(path,NULL);
-	if(!node) return -ENOENT;
-	node->st.st_uid = uid;
-	node->st.st_gid = gid;
-	return 0;
+    struct filenode* node = get_filenode(path,NULL);
+    if(!node) return -ENOENT;
+    node->st.st_uid = uid;
+    node->st.st_gid = gid;
+    return 0;
 }
 
 static int zfs_rename(const char* old, const char * new){
-	struct filenode* node = get_filenode(old,NULL);
-	if(node==NULL)return -ENOENT;
-	memcpy(node->name,new,sizeof(new));
-	return 0;
+    struct filenode* node = get_filenode(old,NULL);
+    if(node==NULL)return -ENOENT;
+    memcpy(node->name,new,sizeof(new));
+    return 0;
 }
 
 static int zfs_utimens(const char * path,const struct timespec tv[2]){
-	struct filenode* node = get_filenode(path,NULL);
-	if(!node) return -ENOENT;
-	node->st.st_mtime = node->st.st_atime = tv->tv_sec;
-	return 0;
+    struct filenode* node = get_filenode(path,NULL);
+    if(!node) return -ENOENT;
+    node->st.st_mtime = node->st.st_atime = tv->tv_sec;
+    return 0;
 }
 
 static int zfs_getattr(const char *path, struct stat *stbuf){
     struct filenode *node = get_filenode(path,NULL);
     if(strcmp(path, "/") == 0){  // neccesary
-		memset(stbuf,0,sizeof(struct stat));
+        memset(stbuf,0,sizeof(struct stat));
         stbuf->st_mode = S_IFDIR | 0755;   
-		stbuf->st_uid = fuse_get_context() -> uid;
-		stbuf->st_gid = fuse_get_context() -> gid;
+        stbuf->st_uid = fuse_get_context() -> uid;
+        stbuf->st_gid = fuse_get_context() -> gid;
         return 0;
     }else if(node) {
         memcpy(stbuf,&node->st, sizeof(struct stat));
@@ -333,11 +333,6 @@ static int zfs_mkdir(const char * path, mode_t mode){
     return 0;
 }
 
-static int zfs_rmdir(const char * path){
-    return zfs_unlink(path);    
-}
-
-
 static const struct fuse_operations op = {
     .init = zfs_init,
     .getattr = zfs_getattr,
@@ -348,10 +343,10 @@ static const struct fuse_operations op = {
     .truncate = zfs_truncate,
     .read = zfs_read,
     .unlink = zfs_unlink,
-	.chmod = zfs_chmod,
-	.chown = zfs_chown,
-	.rename = zfs_rename,
-	.utimens = zfs_utimens,
+    .chmod = zfs_chmod,
+    .chown = zfs_chown,
+    .rename = zfs_rename,
+    .utimens = zfs_utimens,
     //.mkdir = zfs_mkdir,
     //.rmdir = zfs_rmdir,
 };
