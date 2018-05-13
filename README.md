@@ -5,7 +5,7 @@
 - [x] view attr of files and the root directory
 - [x] read file
 - [x] write file
-- [ ] directories operation ( to do )
+- [ ] directory operations ( to do )
 ## Design
 ### metadata of fs
 * TOTAL SIZE: 4G
@@ -32,13 +32,8 @@ including :
 ### Free space allocation algorithm 
 `next fit`
 
- 
-## Vision
-![](src/fs.png)
-
-
 ## Resource
-- [binary file](src/oshfs)
+- [binary file](oshfs)
 - [test file](src/test.sh)
 ```shell
 gcc -D_FILE_OFFSET_BITS=64 -o oshfs oshfs.c -lfuse 
@@ -55,5 +50,8 @@ dd if=testfile of=/dev/null # 测试文件读取
 rm testfile
 ls -al # testfile是否成功删除
 ```
+## Vision
+![](src/fs.png)
+
 ## Licence
 [MIT](LICENCE)

@@ -1,5 +1,6 @@
-oshfs
-tmp*
+/oshfs
+/test.sh
+/example*
+/tmp*
 mountpoint
-do.sh
-example*
+*.o
