@@ -15,7 +15,6 @@
 
 #define FUSE_USE_VERSION 26
 #include <string.h>
-#include <stdio.h>
 #include <stdlib.h>
 #include <errno.h>
 #include <time.h>
@@ -147,6 +146,12 @@ static void *zfs_init(struct fuse_conn_info *conn){
 	return NULL; 
 }
  
+static int zfs_open(const char *path, struct fuse_file_info *fi){
+	if(get_filenode(path,NULL)==NULL) return -ENOENT;
+    return 0;
+}
+
+
 
 static int zfs_mknod(const char *path, mode_t mode, dev_t dev){  
     /* when createing a file, if create not impl, call mknod  @fuse.h L368 ,106
@@ -167,15 +172,42 @@ static int zfs_mknod(const char *path, mode_t mode, dev_t dev){
     return 0;
 }
 
-static int zfs_open(const char *path, struct fuse_file_info *fi){
-    return 0;
+static int zfs_chmod(const char *path,mode_t mode){
+	struct filenode * node = get_filenode(path,NULL);
+	if(!node) return -ENOENT;
+	node->st.st_mode = mode;
+	return 0;
+}
+
+static int zfs_chown(const char * path, uid_t uid,gid_t gid){
+	struct filenode* node = get_filenode(path,NULL);
+	if(!node) return -ENOENT;
+	node->st.st_uid = uid;
+	node->st.st_gid = gid;
+	return 0;
+}
+
+static int zfs_rename(const char* old, const char * new){
+	struct filenode* node = get_filenode(old,NULL);
+	if(node==NULL)return -ENOENT;
+	memcpy(node->name,new,sizeof(new));
+	return 0;
+}
+
+static int zfs_utimens(const char * path,const struct timespec tv[2]){
+	struct filenode* node = get_filenode(path,NULL);
+	if(!node) return -ENOENT;
+	node->st.st_mtime = node->st.st_atime = tv->tv_sec;
+	return 0;
 }
 
 static int zfs_getattr(const char *path, struct stat *stbuf){
     struct filenode *node = get_filenode(path,NULL);
-    memset(stbuf,0,sizeof(struct stat));
     if(strcmp(path, "/") == 0){  // neccesary
+		memset(stbuf,0,sizeof(struct stat));
         stbuf->st_mode = S_IFDIR | 0755;   
+		stbuf->st_uid = fuse_get_context() -> uid;
+		stbuf->st_gid = fuse_get_context() -> gid;
         return 0;
     }else if(node) {
         memcpy(stbuf,&node->st, sizeof(struct stat));
@@ -316,6 +348,10 @@ static const struct fuse_operations op = {
     .truncate = zfs_truncate,
     .read = zfs_read,
     .unlink = zfs_unlink,
+	.chmod = zfs_chmod,
+	.chown = zfs_chown,
+	.rename = zfs_rename,
+	.utimens = zfs_utimens,
     //.mkdir = zfs_mkdir,
     //.rmdir = zfs_rmdir,
 };
