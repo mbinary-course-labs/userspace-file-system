@@ -21,7 +21,7 @@
 #include <fuse.h>
 #include <sys/mman.h>
 
-#define NAME_LENGTH 256
+#define NAMELEN 256
 #define BLOCKSIZE 4096    // 4kb
 #define BLOCKNR  1048576 //1<<20 =  total/blocksize = 4g/4k
 #define  CONTENT_SIZE  (4096 -  sizeof(block_no_t)) 
@@ -41,9 +41,17 @@ struct entry_node {
     block_no_t  content;
     struct stat st;
     struct entry_node *next;
-    char name[NAME_LENGTH];
+    char name[NAMELEN];
 };
 
+struct super_node{
+    block_no_t block_no;
+    block_no_t used_block;
+    block_no_t last_block;
+    block_no_t blocknr;
+    unsigned  namelen;
+    unsigned  blocksize;
+};
 static block_no_t map_mem(block_no_t i){
   /* get a vacant block and mmap, and init header info*/
     for(i=i%BLOCKNR;i<BLOCKNR;++i){
@@ -120,7 +128,7 @@ static struct entry_node* create_entry_node(const char *name, const struct stat 
     ++name; // skip the leading "/"
     /*wrong:   int namelen = sizeof(name);  */
     int namelen = strlen(name);
-    if(namelen>NAME_LENGTH) namelen = NAME_LENGTH;
+    if(namelen>NAMELEN) namelen = NAMELEN;
     struct entry_node * nd = (struct entry_node*)mem[i];
     memcpy(nd->name, name,namelen);
     memcpy(&nd->st , st, sizeof(struct stat));
@@ -139,10 +147,15 @@ static void *zfs_init(struct fuse_conn_info *conn){
      * storing info such as used_block(num), last_block(allocated)
      * */
     mem[0]= mmap(NULL, BLOCKSIZE, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
-    LAST_BLOCK =(block_no_t*)((char*)mem[0]);
-    USED_BLOCK = (block_no_t*)((char*)mem[0]+sizeof(block_no_t));
+    struct super_node * super = mem[0];
+    LAST_BLOCK = &(super->last_block);
+    USED_BLOCK = &(super->used_block);
     *USED_BLOCK =1;
     *LAST_BLOCK=0;
+    super->namelen = NAMELEN;
+    super->blocknr = BLOCKNR;
+    super->blocksize = BLOCKSIZE;
+    super->block_no = 0;
     return NULL; 
 }
  
