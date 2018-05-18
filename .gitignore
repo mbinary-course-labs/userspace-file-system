@@ -1,6 +1,8 @@
 /oshfs
+/zfs
 /test.sh
 /example*
 /tmp*
 mountpoint
 *.o
+.*

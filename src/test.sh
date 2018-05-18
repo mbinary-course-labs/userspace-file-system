@@ -1,19 +1,19 @@
-gcc -D_FILE_OFFSET_BITS=64 -o oshfs oshfs.c -lfuse 
-
 set -x # debug on
-cp ~/Downloads/chrome.deb  mountpoint/chrome.deb
-md5sum -b  ~/Downloads/chrome.deb  mountpoint/chrome.deb
+gcc -D_FILE_OFFSET_BITS=64 -o zfs  $1 -lfuse 
+./zfs -o nonempty  mountpoint
 cd mountpoint
-mv chrome.deb testfile
-ls -l testfile # 查看是否成功创建文件
-chmod 777 testfile && chown mbinary  testfile 
-ls -l testfile
-dd if=/dev/zero of=testfile bs=1M count=2000
-ls -l testfile # 测试2000MiB大文件写入
-dd if=/dev/urandom of=testfile bs=1M count=1 seek=10
-ls -l testfile # 此时应为11MiB
-dd if=testfile of=/dev/null # 测试文件读取
-rm testfile
-ls -al # testfile是否成功删除
-
+cp  ../test.sh .
+md5sum  ../test.sh test.sh
+diff  -qy ../test.sh test.sh
+#mv test.sh  teeeeeeestfile
+ls -hl teeeeeeestfile # 查看是否成功创建文件
+dd if=/dev/zero of=teeeeeeestfile bs=1M count=50
+ls -hl teeeeeeestfile # 测试2000MiB大文件写入
+dd if=/dev/urandom of=teeeeeeestfile bs=1M count=1 seek=10
+ls -hl teeeeeeestfile # 此时应为11MiB
+dd if=teeeeeeestfile of=/dev/null # 测试文件读取
+chmod 777 teeeeeeestfile && chown mbinary  teeeeeeestfile 
+ls -hl teeeeeeestfile
+cd ..
+umount -l mountpoint
 set +x # debug off
