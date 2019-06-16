@@ -1,5 +1,5 @@
 # Simple Filesystem
-> An implementation of userspace filesystem using fuse interfaces
+> A simple file system running on user space
 
 ## Function
 - [x] read file
@@ -62,4 +62,4 @@ The following are file data content
 ![](src/fs.png)
 
 ## Licence
-[MIT](LICENCE)
+[MIT](LICENSE)
